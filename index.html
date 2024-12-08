@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旅遊分帳系統</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f8ff;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            width: 100%;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #007bff;
+            font-size: 1.8em;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        button {
+            background: linear-gradient(to right, #4facfe, #00f2fe);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin: 5px;
+            font-size: 1em;
+        }
+        button:hover {
+            background: linear-gradient(to right, #00c6ff, #0072ff);
+        }
+        #result, #transactions {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+        }
+        p {
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+        .input-group {
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        input[type="text"], input[type="number"] {
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            font-size: 1em;
+            flex: 1 1 45%;
+        }
+        .participant-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            gap: 10px;
+        }
+        .participant-group input {
+            flex: 1;
+        }
+        .removeParticipantButton {
+            background: #ff6b6b;
+            transition: background 0.3s;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            padding: 0;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .removeParticipantButton:hover {
+            background: #ff5252;
+        }
+        .removeExpenseButton {
+            background: #ff6b6b;
+            transition: background 0.3s;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .removeExpenseButton:hover {
+            background: #ff5252;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>分帳系統</h1>
+        <div class="input-group">
+            <input type="text" id="item" placeholder="消費項目">
+            <input type="number" id="amount" placeholder="金額">
+            <input type="text" id="payer" placeholder="付款人">
+        </div>
+        <div id="participantsContainer">
+            <div class="participant-group">
+                <input type="text" class="participant-name" placeholder="參與者姓名">
+                <input type="number" class="participant-amount" placeholder="金額 (可選)" min="0">
+                <button type="button" class="removeParticipantButton">&times;</button>
+            </div>
+        </div>
+        <button id="addParticipantButton">新增參與者</button>
+        <button id="addExpenseButton">新增消費</button>
+        <table id="expenseTable">
+            <thead>
+                <tr>
+                    <th>消費項目</th>
+                    <th>金額</th>
+                    <th>付款人</th>
+                    <th>參與者</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 使用 JavaScript 動態插入資料 -->
+            </tbody>
+        </table>
+        <button id="calculateButton">計算每人應付金額</button>
+        <div id="result">
+            <!-- 顯示每人應付金額 -->
+        </div>
+        <div id="transactions">
+            <!-- 顯示誰應該付給誰 -->
+        </div>
+    </div>
+
+    <script>
+        // 假設從 Excel 匯入的 JSON 數據
+        const expenses = [];
+
+        $(document).ready(function() {
+            // 將數據插入表格
+            function renderExpenses() {
+                $('#expenseTable tbody').empty();
+                expenses.forEach((expense, index) => {
+                    const participantsStr = expense.participants.map(p => `${p.name}: ${p.amount}`).join(', ');
+                    $('#expenseTable tbody').append(
+                        `<tr>
+                            <td>${expense.item}</td>
+                            <td>${expense.amount}</td>
+                            <td>${expense.payer}</td>
+                            <td>${participantsStr}</td>
+                            <td><button class="removeExpenseButton" data-index="${index}">移除</button></td>
+                        </tr>`
+                    );
+                });
+            }
+            renderExpenses();
+
+            // 新增參與者
+            $('#addParticipantButton').click(function() {
+                $('#participantsContainer').append(
+                    `<div class="participant-group">
+                        <input type="text" class="participant-name" placeholder="參與者姓名">
+                        <input type="number" class="participant-amount" placeholder="金額 (可選)" min="0">
+                        <button type="button" class="removeParticipantButton">&times;</button>
+                    </div>`
+                );
+            });
+
+            // 移除參與者
+            $(document).on('click', '.removeParticipantButton', function() {
+                $(this).closest('.participant-group').remove();
+            });
+
+            // 新增消費
+            $('#addExpenseButton').click(function() {
+                const item = $('#item').val().trim();
+                const amount = parseFloat($('#amount').val());
+                const payer = $('#payer').val().trim();
+                const participants = [];
+                let totalSpecifiedAmount = 0;
+
+                $('#participantsContainer .participant-group').each(function() {
+                    const name = $(this).find('.participant-name').val().trim();
+                    const specifiedAmount = parseFloat($(this).find('.participant-amount').val());
+                    if (name) {
+                        if (!isNaN(specifiedAmount)) {
+                            participants.push({ name, amount: specifiedAmount });
+                            totalSpecifiedAmount += specifiedAmount;
+                        } else {
+                            participants.push({ name, amount: 0 });
+                        }
+                    }
+                });
+
+                if (item && !isNaN(amount) && payer) {
+                    const unspecifiedParticipants = participants.filter(participant => participant.amount === 0);
+                    const remainingAmount = amount - totalSpecifiedAmount;
+                    if (unspecifiedParticipants.length > 0) {
+                        const equalAmount = parseFloat((remainingAmount / unspecifiedParticipants.length).toFixed(2));
+                        unspecifiedParticipants.forEach(participant => participant.amount = equalAmount);
+                    }
+                    expenses.push({ item, amount, payer, participants });
+                    renderExpenses();
+                    $('#item').val('');
+                    $('#amount').val('');
+                    $('#payer').val('');
+                    $('#participantsContainer').empty();
+                    $('#participantsContainer').append(
+                        `<div class="participant-group">
+                            <input type="text" class="participant-name" placeholder="參與者姓名">
+                            <input type="number" class="participant-amount" placeholder="金額 (可選)" min="0">
+                            <button type="button" class="removeParticipantButton">&times;</button>
+                        </div>`
+                    );
+                } else {
+                    alert('請填寫完整的消費資料！');
+                }
+            });
+
+            // 移除消費
+            $(document).on('click', '.removeExpenseButton', function() {
+                const index = $(this).data('index');
+                expenses.splice(index, 1);
+                renderExpenses();
+            });
+
+            // 計算每人應付金額
+            $('#calculateButton').click(function() {
+                const balance = {};
+
+                expenses.forEach(expense => {
+                    expense.participants.forEach(participant => {
+                        if (!balance[participant.name]) balance[participant.name] = 0;
+                        balance[participant.name] -= participant.amount;
+                    });
+
+                    if (!balance[expense.payer]) balance[expense.payer] = 0;
+                    balance[expense.payer] += expense.amount;
+                });
+
+                // 顯示結果
+                $('#result').empty();
+                for (const person in balance) {
+                    if (balance[person] > 0) {
+                        $('#result').append(`<p>${person} 應收金額: ${balance[person].toFixed(2)} 元</p>`);
+                    } else if (balance[person] < 0) {
+                        $('#result').append(`<p>${person} 應付金額: ${(-balance[person]).toFixed(2)} 元</p>`);
+                    } else {
+                        $('#result').append(`<p>${person} 無需支付或收取任何金額</p>`);
+                    }
+                }
+
+                // 精確計算誰付給誰
+                const transactions = [];
+                const people = Object.keys(balance);
+                people.sort((a, b) => balance[a] - balance[b]);
+
+                let i = 0;
+                let j = people.length - 1;
+
+                while (i < j) {
+                    const debtor = people[i];
+                    const creditor = people[j];
+                    const amountToTransfer = Math.min(-balance[debtor], balance[creditor]);
+
+                    if (amountToTransfer > 0) {
+                        transactions.push({ from: debtor, to: creditor, amount: amountToTransfer });
+                        balance[debtor] += amountToTransfer;
+                        balance[creditor] -= amountToTransfer;
+                    }
+
+                    if (balance[debtor] === 0) i++;
+                    if (balance[creditor] === 0) j--;
+                }
+
+                // 顯示誰付給誰的結果
+                $('#transactions').empty();
+                transactions.forEach(transaction => {
+                    $('#transactions').append(`<p>${transaction.from} 需要支付 ${transaction.amount.toFixed(2)} 元給 ${transaction.to}</p>`);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
